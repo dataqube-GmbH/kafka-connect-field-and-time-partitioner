@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.canelmas.kafka.connect;
+package de.dataqube.kafka.connect;
 
 import io.confluent.connect.storage.errors.PartitionException;
 import io.confluent.connect.storage.partitioner.TimeBasedPartitioner;
@@ -72,6 +72,11 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
         return DateTimeFormat.forPattern(str).withZone(timeZone);
     }
 
+    @Override
+    public TimestampExtractor getTimestampExtractor() {
+        return this.timestampExtractor;
+    }
+
     public static long getPartition(long timeGranularityMs, long timestamp, DateTimeZone timeZone) {
 
         long adjustedTimestamp = timeZone.convertUTCToLocal(timestamp);
@@ -124,9 +129,18 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
     static class PartitionFieldExtractor {
 
         private final String fieldName;
+        private final Boolean includeName;
+        private String fieldNameRepr;
 
         PartitionFieldExtractor(String fieldName) {
+            this(fieldName, true);
+        }
+
+        PartitionFieldExtractor(String fieldName, Boolean includeName) {
             this.fieldName = fieldName;
+            this.includeName = includeName;
+            String[] splitted = fieldName.split("\\.");
+            this.fieldNameRepr = splitted[splitted.length-1];
         }
 
         String extract(ConnectRecord<?> record) {
@@ -138,13 +152,13 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
                 final Object field = DataUtils.getNestedFieldValue(value, fieldName);
                 final Schema fieldSchema = DataUtils.getNestedField(record.valueSchema(), fieldName).schema();
 
-                FieldAndTimeBasedPartitioner.log.error("Unsupported type '{}' for partition field.", fieldSchema.type().getName());
+                //FieldAndTimeBasedPartitioner.log.error("Unsupported type '{}' for partition field.", fieldSchema.type().getName());
 
-                return (String) field;
+                return getRepr((String) field);
 
             } else if (value instanceof Map) {
 
-                return (String) DataUtils.getNestedFieldValue(value, fieldName);
+                return getRepr((String) DataUtils.getNestedFieldValue(value, fieldName));
 
             } else {
 
@@ -152,6 +166,10 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
                 throw new PartitionException("Error encoding partition.");
                 
             }
+        }
+
+        private String getRepr(String value) {
+            return this.includeName ? String.format("%s=%s", this.fieldNameRepr, value) : value;
         }
     }
 }
