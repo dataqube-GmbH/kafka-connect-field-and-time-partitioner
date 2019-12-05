@@ -1,29 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ~ Copyright (C) 2019 Can Elmas <canelm@gmail.com>
-  ~
-  ~ Licensed under the Apache License, Version 2.0 (the "License");
-  ~ you may not use this file except in compliance with the License.
-  ~ You may obtain a copy of the License at
-  ~
-  ~    http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.canelmas.kafka</groupId>
+    <groupId>de.dataqube.kafka</groupId>
     <artifactId>connect-s3-fieldandtime-partitioner</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
+
+    <scm>
+        <url>https://github.com/dataqube-GmbH/kafka-connect-field-and-time-partitioner</url>
+        <connection>scm:git:git://github.com/dataqube-GmbH/kafka-connect-field-and-time-partitioner.git</connection>
+        <developerConnection>scm:git:git@github.com:dataqube-GmbH/kafka-connect-field-and-time-partitioner.git</developerConnection>
+    </scm>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub dataqube-gmbh Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/dataqube-gmbh/kafka-connect-field-and-time-partitioner</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <confluent.version>5.3.0</confluent.version>
@@ -45,7 +51,7 @@
             <artifactId>connect-api</artifactId>
             <version>2.1.0</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/junit/junit -->
+        <!-- TEST -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

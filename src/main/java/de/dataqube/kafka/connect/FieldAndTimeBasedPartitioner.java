@@ -89,18 +89,18 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
     public String encodePartition(SinkRecord sinkRecord, long nowInMillis) {
 
         final Long timestamp = this.timestampExtractor.extract(sinkRecord, nowInMillis);
-        final String partitionField = this.partitionFieldExtractor.extract(sinkRecord);
+        final String partitionFields = String.join(delim, this.partitionFieldExtractor.extract(sinkRecord));
 
-        return this.encodedPartitionForFieldAndTime(sinkRecord, timestamp, partitionField);
+        return this.encodedPartitionForFieldAndTime(sinkRecord, timestamp, partitionFields);
 
     }
 
     public String encodePartition(SinkRecord sinkRecord) {
 
         final Long timestamp = this.timestampExtractor.extract(sinkRecord);
-        final String partitionFieldValue = this.partitionFieldExtractor.extract(sinkRecord);
+        final String partitionFieldValues = String.join(this.delim, this.partitionFieldExtractor.extract(sinkRecord));
 
-        return encodedPartitionForFieldAndTime(sinkRecord, timestamp, partitionFieldValue);
+        return encodedPartitionForFieldAndTime(sinkRecord, timestamp, partitionFieldValues);
 
     }
 
@@ -120,7 +120,7 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
 
         }  else {
 
-            DateTime bucket = new DateTime(getPartition(this.partitionDurationMs, timestamp.longValue(), this.formatter.getZone()));
+            DateTime bucket = new DateTime(getPartition(this.partitionDurationMs, timestamp, this.formatter.getZone()));
             return partitionField + this.delim + bucket.toString(this.formatter);
             
         }
@@ -128,48 +128,55 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
 
     static class PartitionFieldExtractor {
 
-        private final String fieldName;
-        private final Boolean includeName;
-        private String fieldNameRepr;
+        private String[] fieldNames;
+        private Boolean includeName;
+        private String[] fieldNameRepr;
 
-        PartitionFieldExtractor(String fieldName) {
-            this(fieldName, true);
+        PartitionFieldExtractor(String fieldNames) {
+            this(fieldNames, true);
         }
 
-        PartitionFieldExtractor(String fieldName, Boolean includeName) {
-            this.fieldName = fieldName;
-            this.includeName = includeName;
-            String[] splitted = fieldName.split("\\.");
-            this.fieldNameRepr = splitted[splitted.length-1];
-        }
+        PartitionFieldExtractor(String fieldNames, Boolean includeName) {
+            try {
+                this.fieldNames = fieldNames.split(",");
+                this.includeName = includeName;
+                this.fieldNameRepr = new String[this.fieldNames.length];
+                for(int i=0; i<this.fieldNames.length; ++i) {
+                    String[] splitted = this.fieldNames[i].split("\\.");
+                    this.fieldNameRepr[i] = splitted[splitted.length - 1];
+                }
 
-        String extract(ConnectRecord<?> record) {
-
-            Object value = record.value();
-
-            if (value instanceof Struct) {
-
-                final Object field = DataUtils.getNestedFieldValue(value, fieldName);
-                final Schema fieldSchema = DataUtils.getNestedField(record.valueSchema(), fieldName).schema();
-
-                //FieldAndTimeBasedPartitioner.log.error("Unsupported type '{}' for partition field.", fieldSchema.type().getName());
-
-                return getRepr((String) field);
-
-            } else if (value instanceof Map) {
-
-                return getRepr((String) DataUtils.getNestedFieldValue(value, fieldName));
-
-            } else {
-
-                FieldAndTimeBasedPartitioner.log.error("Value is not of Struct or Map type.");
-                throw new PartitionException("Error encoding partition.");
-                
+            } catch(Exception e) {
+                ConfigException ce = new ConfigException("partition.field", fieldNames, e.getMessage());
+                ce.initCause(e);
+                throw ce;
             }
         }
 
-        private String getRepr(String value) {
-            return this.includeName ? String.format("%s=%s", this.fieldNameRepr, value) : value;
+        String[] extract(ConnectRecord<?> record) {
+
+            Object value = record.value();
+            String[] extracted = new String[this.fieldNames.length];
+
+            for(int i=0; i<this.fieldNames.length; ++i) {
+                String fieldName = this.fieldNames[i];
+                String fieldNameRepr = this.fieldNameRepr[i];
+
+                if (value instanceof Struct) {
+                    final Object field = DataUtils.getNestedFieldValue(value, fieldName);
+                    extracted[i] = getRepr(field.toString(), fieldNameRepr);
+                } else if (value instanceof Map) {
+                    extracted[i] =  getRepr(DataUtils.getNestedFieldValue(value, fieldName).toString(), fieldNameRepr);
+                } else {
+                    FieldAndTimeBasedPartitioner.log.error("Value is not of Struct or Map type.");
+                    throw new PartitionException("Error encoding partition.");
+                }
+            }
+            return extracted;
+        }
+
+        private String getRepr(String value, String fieldNameRepr) {
+            return this.includeName ? String.format("%s=%s", fieldNameRepr, value) : value;
         }
     }
 }
