@@ -56,15 +56,21 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
             this.formatter = getDateTimeFormatter(pathFormat, timeZone).withLocale(locale);
             this.timestampExtractor = this.newTimestampExtractor((String)config.get("timestamp.extractor"));
             this.timestampExtractor.configure(config);
+            String partitionFields = (String)config.get("partition.fields");
+            if (partitionFields == null) {
+                // fallback (from previous version)
+                partitionFields = (String) config.get("partition.field");
+            }
+            String partitionNames = (String)config.get("partition.names");
 
-            this.partitionFieldExtractor = new PartitionFieldExtractor((String)config.get("partition.field"));
+            this.partitionFieldExtractor = new PartitionFieldExtractor(partitionFields, partitionNames);
 
         } catch (IllegalArgumentException e) {
 
             ConfigException ce = new ConfigException("path.format", pathFormat, e.getMessage());
             ce.initCause(e);
             throw ce;
-            
+
         }
     }
 
@@ -83,9 +89,9 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
         long partitionedTime = adjustedTimestamp / timeGranularityMs * timeGranularityMs;
 
         return timeZone.convertLocalToUTC(partitionedTime, false);
-        
+
     }
-    
+
     public String encodePartition(SinkRecord sinkRecord, long nowInMillis) {
 
         final Long timestamp = this.timestampExtractor.extract(sinkRecord, nowInMillis);
@@ -122,23 +128,27 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
 
             DateTime bucket = new DateTime(getPartition(this.partitionDurationMs, timestamp, this.formatter.getZone()));
             return partitionField + this.delim + bucket.toString(this.formatter);
-            
+
         }
     }
 
     static class PartitionFieldExtractor {
 
         private String[] fieldNames;
+        private String[] partitionNames;
         private Boolean includeName;
         private String[] fieldNameRepr;
 
-        PartitionFieldExtractor(String fieldNames) {
-            this(fieldNames, true);
+        PartitionFieldExtractor(String fieldNames, String partitionNames) {
+            this(fieldNames, partitionNames, true);
         }
 
-        PartitionFieldExtractor(String fieldNames, Boolean includeName) {
+        PartitionFieldExtractor(String fieldNames, String partitionNames, Boolean includeName) {
             try {
                 this.fieldNames = fieldNames.split(",");
+                if(partitionNames != null) {
+                    this.partitionNames = partitionNames.split(",");
+                }
                 this.includeName = includeName;
                 this.fieldNameRepr = new String[this.fieldNames.length];
                 for(int i=0; i<this.fieldNames.length; ++i) {
@@ -160,7 +170,7 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
 
             for(int i=0; i<this.fieldNames.length; ++i) {
                 String fieldName = this.fieldNames[i];
-                String fieldNameRepr = this.fieldNameRepr[i];
+                String fieldNameRepr = this.partitionNames != null ? this.partitionNames[i] : this.fieldNameRepr[i];
 
                 if (value instanceof Struct) {
                     final Object field = DataUtils.getNestedFieldValue(value, fieldName);
@@ -178,5 +188,6 @@ public final class FieldAndTimeBasedPartitioner<T> extends TimeBasedPartitioner<
         private String getRepr(String value, String fieldNameRepr) {
             return this.includeName ? String.format("%s=%s", fieldNameRepr, value) : value;
         }
+
     }
 }

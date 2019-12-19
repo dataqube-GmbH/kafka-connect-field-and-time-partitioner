@@ -27,7 +27,6 @@ build:
 
 publish:
   stage: publish
-  tags: ['kmo-aws-entdecken']
   only: ['master']
   dependencies:
   - build

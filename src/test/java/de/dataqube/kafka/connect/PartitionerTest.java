@@ -29,11 +29,27 @@ public class PartitionerTest {
     public void testTimestampExtractorIsSet() {
         Map<String,Object> configs = getTestConfig();
         configs.put("partition.field", "payload.metadata.company");
+        configs.put("timestamp.extractor", "RecordField");
+        configs.put("timestamp.field", "timestamp");
         FieldAndTimeBasedPartitioner<String> partitioner = new FieldAndTimeBasedPartitioner<String>();
         partitioner.configure(configs);
 
         TimestampExtractor timestampExtractor = ((TimeBasedPartitioner) partitioner).getTimestampExtractor();
         Assert.assertNotNull(timestampExtractor);
+        Long timestamp = 1574194406876L;
+
+        Schema schema = SchemaBuilder.struct().name("record")
+                .field("timestamp", Schema.INT64_SCHEMA)
+                .build();
+
+        Struct struct = new Struct(schema)
+                .put("timestamp", timestamp);
+
+        Long extracted = timestampExtractor.extract(new SinkRecord("topic", 0, null, null, schema, struct, 0));
+
+        Assert.assertEquals(timestamp, extracted);
+
+
     }
 
     @Test
@@ -59,6 +75,38 @@ public class PartitionerTest {
 
         String partition = partitioner.encodePartition(record);
         Assert.assertTrue(partition.startsWith("field1=myvalue1/field2=2/"));
+
+        String partition2 = partitioner.encodePartition(record, System.currentTimeMillis());
+        Assert.assertTrue(partition2.startsWith("field1=myvalue1/field2=2/"));
+    }
+
+    @Test
+    public void testSettingMultipleFieldAndPartitionNames() {
+        Map<String,Object> configs = getTestConfig();
+        configs.put("partition.fields", "my.field1,my.field2");
+        configs.put("partition.names", "klaus,uwe");
+        FieldAndTimeBasedPartitioner<String> partitioner = new FieldAndTimeBasedPartitioner<String>();
+        partitioner.configure(configs);
+
+        Schema innerSchema = SchemaBuilder.struct().name("inner")
+                .field("field1", Schema.STRING_SCHEMA)
+                .field("field2", Schema.INT32_SCHEMA)
+                .build();
+        Schema schema = SchemaBuilder.struct().name("outer").field("my", innerSchema);
+
+        Struct innerStruct = new Struct(innerSchema)
+                .put("field1", "myvalue1")
+                .put("field2", 2);
+
+        Struct struct = new Struct(schema).put("my", innerStruct);
+
+        SinkRecord record = new SinkRecord("topic", 0, null, null, schema, struct, 0);
+
+        String partition = partitioner.encodePartition(record);
+        Assert.assertTrue(partition.startsWith("klaus=myvalue1/uwe=2/"));
+
+        String partition2 = partitioner.encodePartition(record, System.currentTimeMillis());
+        Assert.assertTrue(partition2.startsWith("klaus=myvalue1/uwe=2/"));
     }
 
 

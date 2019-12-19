@@ -6,13 +6,11 @@
 
     <groupId>de.dataqube.kafka</groupId>
     <artifactId>connect-s3-fieldandtime-partitioner</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <scm>
-        <url>https://github.com/dataqube-GmbH/kafka-connect-field-and-time-partitioner</url>
-        <connection>scm:git:git://github.com/dataqube-GmbH/kafka-connect-field-and-time-partitioner.git</connection>
-        <developerConnection>scm:git:git@github.com:dataqube-GmbH/kafka-connect-field-and-time-partitioner.git</developerConnection>
+        <url>https://git.qudosoft.de/datalake/kafka/connect/kafka-connect-field-and-time-partitioner</url>
     </scm>
 
     <licenses>
@@ -25,14 +23,14 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub dataqube-gmbh Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/dataqube-gmbh/kafka-connect-field-and-time-partitioner</url>
+            <id>nlc-nexus</id>
+            <name>NLC Nexus</name>
+            <url>http://nexus.prelive.kmo.zone/repository/maven-releases</url>
         </repository>
     </distributionManagement>
 
     <properties>
-        <confluent.version>5.3.0</confluent.version>
+        <confluent.version>5.2.1</confluent.version>
     </properties>
 
     <dependencies>
